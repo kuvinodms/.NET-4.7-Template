@@ -1,0 +1,71 @@
+{
+      "apiVersion": "2016-04-30-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('vmName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+        "[resourceId('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('vmName')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "windowsConfiguration": {
+              "provisionVmAgent": "true"
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "[parameters('windowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+              "createOption": "fromImage",
+              "managedDisk": {
+                  "storageAccountType": "Premium_LRS"
+              }
+          },
+          "dataDisks": []
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": "true",
+            "storageUri": "[reference(resourceId(resourceGroup().name, 'Microsoft.Storage/storageAccounts/', variables('storageAccountName'))).primaryEndpoints['blob']]"
+          }
+        }
+      },
+      "resources": [
+        {
+          "name": "[concat(parameters('vmName'),'/CustomScriptExtension)]",
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "location": "[parameters('location')]",
+          "apiVersion": "2015-06-15",
+          "dependsOn": [
+              "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]"
+          ],
+          "properties": {
+            "publisher": "Microsoft.Compute",
+            "type": "CustomScriptExtension",
+            "typeHandlerVersion": "1.9",
+            "autoUpgradeMinorVersion": true,
+            "protectedSettings": {
+                "commandToExecute": "powershell.exe Invoke-WebRequest https://download.microsoft.com/download/D/D/3/DD35CC25-6E9C-484B-A746-C5BE0C923290/NDP47-KB3186497-x86-x64-AllOS-ENU.exe -outfile $env:temp\\DotNetCore.WindowsHosting.exe; Start-Process $env:temp\\DotNetCore.WindowsHosting.exe -ArgumentList '/quiet' -Wait"
+            }
+          }
+        }
+      ]
+    }
